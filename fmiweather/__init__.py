@@ -4,9 +4,10 @@ Loads FMI weather data
 """
 
 from bs4 import BeautifulSoup
+from pprint import pprint
 import datetime
-import requests
 import pytz
+import requests
 
 class FmiWeather(object):
     """
@@ -96,6 +97,13 @@ class FmiWeather(object):
                 cla = cla.split("-")
                 return "%s/%s" % (cla[1], cla[2])
 
+    @classmethod
+    def _parse_short_datetime(cls, text):
+        """ Parses 23.3 1:00" styled timestamps. Assumes current year. """
+        current_year = datetime.date.today().year
+        text = text.split(" ", 1)
+        text = "%s.%s %s" % (text[0], current_year, text[1])
+        return cls._parse_datetime(text)
 
     @classmethod
     def _parse_datetime(cls, text):
@@ -158,6 +166,10 @@ class FmiWeather(object):
         self.soup = BeautifulSoup(data)
 
         updated_timestamp = self.soup.find("div", {"class": "local-weather-forecast-metadata"})
+
+        if updated_timestamp is None:
+            return
+
         def get_timestamp(field):
             """ Parse modification timestamps """
             data = updated_timestamp.find("span", {"class": field}).text.rsplit(" ")
@@ -217,6 +229,38 @@ class FmiWeather(object):
             return data
 
         return {"meta": {"updated_at": self.deterministic_timestamp}, "forecast": combine_data()}
+
+
+    def parse_wave_information(self):
+        """ Parses wave height information from http://ilmatieteenlaitos.fi/aallonkorkeus """
+        if self.soup is None:
+            raise ValueError("No data loaded yet. Use open_file or download_content to fetch data")
+
+        # Table is a bit broken, so this is hack-ish.
+        data = {}
+        rows = self.soup.findAll("tr")
+        for row in rows:
+            tds = row.findAll("td")
+            header = tds[0]
+            location = header.find("strong")
+            if not location:
+                continue
+            location = location.text.split(u".\xa0", 1)[1]
+
+            d = {"height": {}, "direction": {}}
+            d["height"]["significant"] = self._parse_float(tds[1].text)
+            d["height"]["highest"] = self._parse_float(tds[2].text)
+            direction = tds[3].text
+            if direction:
+                direction = direction.split(u"\xb0 ")
+                d["direction"]["degrees"] = int(direction[0])
+                d["direction"]["letters"] = direction[1].replace("(", "").replace(")", "")
+
+            d["observed_at"] = self._parse_short_datetime(tds[5].text)
+
+            data[location] = d
+
+        return data
 
 
     def parse_next_days(self):
