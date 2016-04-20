@@ -9,6 +9,7 @@ import datetime
 import pytz
 import requests
 
+
 class FmiWeather(object):
     """
     Loads FMI weather data. Usage:
@@ -39,13 +40,11 @@ class FmiWeather(object):
         (u"Lumensyvyys", "cm", "snow"),
     )
 
-
     @classmethod
     def _get_second(cls, value):
         """ Gets second value, separated by unicode non-line-breaking space """
         value = value.split(u"\xa0", 1)
         return value[1]
-
 
     @classmethod
     def _parse_float(cls, value):
@@ -57,7 +56,6 @@ class FmiWeather(object):
             value = value[1:]
         return float(value[0])
 
-
     @classmethod
     def _parse_rainfall(cls, item):
         """ Parses rainfall row item """
@@ -65,7 +63,6 @@ class FmiWeather(object):
         if item is None:
             raise ValueError("Rainfall item does not include value")
         return cls._parse_float(item.text)
-
 
     @classmethod
     def _parse_ppcp(cls, item):
@@ -75,7 +72,6 @@ class FmiWeather(object):
             raise ValueError("ppcp item does not include value")
         return cls._parse_float(item.text) / 100
 
-
     @classmethod
     def _parse_temperature(cls, item):
         """ Parses temperature row item """
@@ -84,7 +80,6 @@ class FmiWeather(object):
             raise ValueError("Temperature item does not include value")
         value = item.text.replace(u"\xb0", "")
         return cls._parse_float(value)
-
 
     @classmethod
     def _parse_symbol(cls, item):
@@ -118,7 +113,7 @@ class FmiWeather(object):
             date[1] = "0" + date[1]
         if len(date[0]) == 1:
             date[0] = "0" + date[0]
-        date = "%s-%s-%s" % (date[2], date[1], date[0]) # YYYY-MM-DD
+        date = "%s-%s-%s" % (date[2], date[1], date[0])  # YYYY-MM-DD
 
         time = time.split(":")
         if len(time[0]) == 1:
@@ -131,7 +126,6 @@ class FmiWeather(object):
         # so that this information is preserved.
         return pytz.timezone("Europe/Helsinki").localize(parsed_timestamp)
 
-
     @classmethod
     def _parse_wind(cls, item):
         """ Parses wind row item """
@@ -143,7 +137,6 @@ class FmiWeather(object):
                 cla = cla.split("-")
                 return {"direction": cla[1], "speed": int(cla[2])}
 
-
     @classmethod
     def _process_row(cls, item, selector, callback):
         """ Process row - "temperatures", "wind information" etc. - for
@@ -154,12 +147,10 @@ class FmiWeather(object):
             items.append(callback(row_item))
         return items
 
-
     def __init__(self):
         self.soup = None
         self.deterministic_timestamp = None
         self.probabilistic_timestamp = None
-
 
     def load_string(self, data):
         """ Loads HTML string """
@@ -177,18 +168,15 @@ class FmiWeather(object):
         self.deterministic_timestamp = get_timestamp("deterministic")
         self.probabilistic_timestamp = get_timestamp("probabilistic")
 
-
     def open_file(self, filename):
         """ Opens, reads and loads given filename """
         self.load_string(open(filename).read())
-
 
     def download_content(self, url):
         """ Downloads and loads given URL """
         response = requests.get(url)
         if response.status_code == 200:
             self.load_string(response.text)
-
 
     def _parse_tables(self, item):
         """ Parses day/hour forecast tables """
@@ -230,7 +218,6 @@ class FmiWeather(object):
 
         return {"meta": {"updated_at": self.deterministic_timestamp}, "forecast": combine_data()}
 
-
     def parse_wave_information(self):
         """ Parses wave height information from http://ilmatieteenlaitos.fi/aallonkorkeus """
         if self.soup is None:
@@ -262,7 +249,6 @@ class FmiWeather(object):
 
         return data
 
-
     def parse_next_days(self):
         """ Parses information for next 6 days """
         if self.soup is None:
@@ -271,12 +257,10 @@ class FmiWeather(object):
         item = self.soup.find("div", {"class": ["mid", "local-weather-forecast"]})
         return self._parse_tables(item)
 
-
     def parse_next_hours(self):
         """ Parses information for next 18 hours """
         item = self.soup.find("div", {"class": ["short", "local-weather-forecast"]})
         return self._parse_tables(item)
-
 
     def parse_all_forecasts(self):
         """ Parses both hourly and daily forecasts and return combined information """
@@ -291,7 +275,6 @@ class FmiWeather(object):
 
         items["forecast"] = sorted(items["forecast"], key=lambda k: k["timestamp"])
         return items
-
 
     def parse_observations(self):
         """ Parses latest observations """

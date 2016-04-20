@@ -29,7 +29,7 @@ setup(
     install_requires=["requests", "beautifulsoup4"],
     test_suite="tests",
 
-    extras_require = {
+    extras_require={
         'dev': ['twine', 'wheel'],
     },
 )
